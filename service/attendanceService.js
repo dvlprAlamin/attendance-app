@@ -11,3 +11,12 @@ export const checkTodaysAttendance = async (email = "null") => {
     });
     return data;
 }
+export const checkAdmin = async (email = "null") => {
+    const q = query(collection(db, "admin"), where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    const data = []
+    querySnapshot.forEach((doc) => {
+        data.push(doc.data())
+    });
+    return data;
+}

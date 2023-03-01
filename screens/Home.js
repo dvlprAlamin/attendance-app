@@ -4,12 +4,17 @@ import { BarCodeScanner } from 'expo-barcode-scanner';
 import { useEffect, useState } from 'react';
 import { auth, db } from '../firebase/firebase.config';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { checkTodaysAttendance } from '../service/attendanceService';
+import { checkAdmin, checkTodaysAttendance } from '../service/attendanceService';
 import moment from "moment";
+import Dashboard from './Dashboard';
+import { useNavigation } from '@react-navigation/native';
 
 export default function Home() {
     const [text, setText] = useState("");
+    const navigation = useNavigation();
+    const [isLoading, setIsLoading] = useState(true);
     const [scanned, setScanned] = useState(false);
+    const [admin, setIsAdmin] = useState(false);
     const [hasPermission, setHasPermission] = useState(false);
     const [isTodayScanned, setIsTodayScanned] = useState(false);
     const [todaysData, setTodaysData] = useState({})
@@ -23,20 +28,47 @@ export default function Home() {
     useEffect(() => {
         askForCameraPermission();
     }, []);
+
+    // check Admin
+    useEffect(() => {
+        const checkingAdmin = async () => {
+            const data = await checkAdmin(auth.currentUser?.email);
+            if (data.length > 0) {
+                setIsAdmin(true);
+            }
+            setIsLoading(false);
+        }
+        checkingAdmin()
+    }, [])
     // What happens when we scan the bar code
     useEffect(() => {
-        const checkAttendance = async () => {
-            const data = await checkTodaysAttendance(auth.currentUser?.email);
-            if (data.length > 0) {
-                setIsTodayScanned(true);
-                setTodaysData(data[0])
-            } else {
-                setIsTodayScanned(false);
+        if (!admin) {
+            const checkAttendance = async () => {
+                const data = await checkTodaysAttendance(auth.currentUser?.email);
+                if (data.length > 0) {
+                    setIsTodayScanned(true);
+                    setTodaysData(data[0])
+                } else {
+                    setIsTodayScanned(false);
+                }
+                // console.log("asdf", data);
             }
-            // console.log("asdf", data);
+            checkAttendance()
         }
-        checkAttendance()
     }, [scanned])
+    if (auth.currentUser === null) {
+        navigation.replace("Login")
+    }
+    if (isLoading) {
+        return <Text >Loading....</Text>
+    }
+
+    if (admin) {
+        return <Dashboard />
+    }
+
+
+
     const handleBarCodeScanned = async ({ type, data }) => {
         setScanned(true);
         console.log("currentUser", auth.currentUser?.email);
