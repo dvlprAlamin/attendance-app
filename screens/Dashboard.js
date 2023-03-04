@@ -3,7 +3,12 @@ import { initializeApp } from 'firebase/app'
 import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import React, { useEffect, useState } from 'react'
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { BottomNavigation } from 'react-native-paper'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { auth, firebaseConfig } from "../firebase/firebase.config";
+import AttendanceListTable from '../src/components/dashboard/AttendanceListTable'
+import BottomTab from '../src/components/dashboard/BottomTab'
+import Header from '../src/components/dashboard/Header'
 const Dashboard = () => {
     const navigation = useNavigation();
     const handleLogout = () => {
@@ -11,54 +16,18 @@ const Dashboard = () => {
             navigation.replace("Login")
         })
     }
-
     return (
-        <View style={styles.container}>
-            <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                    onPress={handleLogout}
-                    style={styles.button}
-                >
-                    <Text style={styles.buttonText}>Logout</Text>
-                </TouchableOpacity>
-            </View>
-            <Text>Dashboard</Text>
-        </View>
+        <>
+            <Header />
+            {/* <Text>Dashboard</Text> */}
+            {/* <AttendanceListTable /> */}
+            <BottomTab />
+        </>
     )
 }
 
 export default Dashboard
 
 const styles = StyleSheet.create({
-    container: {
 
-    },
-    inputContainer: {
-        width: '80%'
-    },
-    input: {
-        backgroundColor: 'white',
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 10,
-        marginTop: 5,
-    },
-    buttonContainer: {
-        width: '50%',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        marginTop: 40,
-    },
-    button: {
-        backgroundColor: '#0782F9',
-        width: '100%',
-        padding: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 16,
-    },
 })

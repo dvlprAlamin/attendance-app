@@ -3,11 +3,13 @@ import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import { useEffect, useState } from 'react';
 import { auth, db } from '../firebase/firebase.config';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { checkAdmin, checkTodaysAttendance } from '../service/attendanceService';
 import moment from "moment";
 import Dashboard from './Dashboard';
 import { useNavigation } from '@react-navigation/native';
+import Logout from '../src/components/Logout';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Home() {
     const [text, setText] = useState("");
@@ -18,6 +20,9 @@ export default function Home() {
     const [hasPermission, setHasPermission] = useState(false);
     const [isTodayScanned, setIsTodayScanned] = useState(false);
     const [todaysData, setTodaysData] = useState({})
+    const [qrCodeData, setQrCodeData] = useState({ code: "" });
+    const [inValid, setInValid] = useState(false);
+    const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
     const askForCameraPermission = () => {
         (async () => {
             const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -51,16 +56,35 @@ export default function Home() {
                 } else {
                     setIsTodayScanned(false);
                 }
-                // console.log("asdf", data);
+                setIsAttendanceLoading(false)
             }
             checkAttendance()
         }
-    }, [scanned])
+    }, [scanned]);
+
+    useEffect(() => {
+        const getQrCode = async () => {
+            const today = moment().format("YYYY-MM-DD");
+            const docRef = doc(db, "qrcode", today);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                setQrCodeData(docSnap.data())
+            }
+        }
+        getQrCode();
+    }, [])
+
+    const handleInvalid = () => {
+        setScanned(false);
+        setInValid(false);
+    }
+
     if (auth.currentUser === null) {
         navigation.replace("Login")
     }
-    if (isLoading) {
-        return <Text >Loading....</Text>
+    if (isLoading || isAttendanceLoading) {
+        return <SafeAreaView><Text >Loading....</Text></SafeAreaView>
     }
 
     if (admin) {
@@ -70,17 +94,22 @@ export default function Home() {
 
 
     const handleBarCodeScanned = async ({ type, data }) => {
-        setScanned(true);
-        console.log("currentUser", auth.currentUser?.email);
-        setText(data)
-        // console.log('Type: ' + type + '\nData: ' + data)
-        const docRef = await addDoc(collection(db, "attendance", moment().format("YYYY-MM-DD"), auth.currentUser?.email), {
-            email: auth.currentUser?.email,
-            createdAt: moment().format("hh:mm:ss a")
-        });
-        // alert("Attendance added successful")
+        // console.log("currentUser", auth.currentUser?.email);
+        // setText(data)
+        if (data === qrCodeData.code) {
+            setScanned(true);
+            const docRef = await addDoc(collection(db, "attendance", moment().format("YYYY-MM-DD"), auth.currentUser?.email), {
+                email: auth.currentUser?.email,
+                createdAt: moment().format("hh:mm:ss a")
+            });
+            alert("Attendance added successful")
+        } else {
+            alert("Invalid QR Code!")
+            setScanned(true);
+            setInValid(true);
+        }
     };
-    // console.log(todaysData);
+
     // Check permissions and return the screens 
     if (hasPermission === null) {
         return (
@@ -97,6 +126,7 @@ export default function Home() {
     }
     return (
         <View style={styles.container}>
+            <Logout />
             {
                 isTodayScanned ?
                     <>
@@ -104,7 +134,13 @@ export default function Home() {
                         <Text style={{ fontSize: 16 }}>Scanned Time: {todaysData?.createdAt}</Text>
                     </> :
                     <>
-                        {
+
+                        {inValid ? <TouchableOpacity
+                            onPress={handleInvalid}
+                            style={{ backgroundColor: "red", padding: 10, borderRadius: 3, marginTop: 20 }}
+                        >
+                            <Text style={{ color: "#fff", fontSize: 16 }}>Re Scan</Text>
+                        </TouchableOpacity> :
                             <>
                                 <Text style={{ fontSize: 20, marginBottom: 20 }}>Scan QR code for attendance.</Text>
                                 <View style={styles.barCodeBox}>
@@ -112,9 +148,7 @@ export default function Home() {
                                         onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                                         style={{ height: 400, width: 400 }} />
                                 </View>
-
                             </>
-
                         }
                     </>
             }
@@ -135,9 +169,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         height: 300,
-        width: 300,
+        width: 280,
         overflow: 'hidden',
-        borderRadius: 30,
+        borderTopWidth: 20,
+        borderTopColor: "tomato",
+        borderBottomWidth: 20,
+        borderBottomColor: "tomato",
+        borderRadius: 10,
         backgroundColor: 'tomato'
     },
     scanButton: {
